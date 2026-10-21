@@ -1,6 +1,6 @@
 # API Productos con Node.js, PostgreSQL y Docker
 
-API REST lista para ejecutar localmente con Docker Compose. PostgreSQL guarda sus datos en el volumen persistente `postgres_data`. Incluye rutas GET para maestros y productos, y un POST para que n8n u otro cliente registre productos.
+API REST lista para ejecutar localmente con Docker Compose. PostgreSQL guarda sus datos en el volumen persistente `postgres_data`. Incluye rutas para maestros, productos y Pokémon, con una ruta de sincronización para las filas de Pokémon de Google Sheets.
 
 ## Requisitos
 
@@ -25,6 +25,7 @@ http://localhost:3000/health
 http://localhost:3000/api/maestros/1
 http://localhost:3000/api/productos
 http://localhost:3000/api/productos/1
+http://localhost:3000/api/pokemon
 ```
 
 La ruta de ejemplo equivalente a la solicitada es `GET /api/maestros/1`. Para apagar los contenedores conservando los datos: `docker compose down`. Para borrar también la base persistida: `docker compose down -v`.
@@ -59,6 +60,23 @@ La base del contenedor y el servidor local comparten la configuración por el pu
 | GET | `/api/productos` | Lista productos con el nombre del maestro |
 | GET | `/api/productos/:id` | Devuelve un producto por ID |
 | POST | `/api/productos` | Crea un producto desde JSON |
+| GET | `/api/pokemon` | Lista los Pokémon sincronizados |
+| GET | `/api/pokemon/:id` | Devuelve un Pokémon por el ID de la hoja |
+| POST | `/api/pokemon` | Crea o actualiza un Pokémon usando su ID como clave |
+
+Para sincronizar una fila de la hoja, envía `ID`, `Nombre`, `Tipo`, `Imagen Frontal` e `Imagen Trasera` desde Google Sheets al nodo HTTP Request como JSON con estas propiedades:
+
+```json
+{
+  "id": 1,
+  "nombre": "bulbasaur",
+  "tipo": "grass",
+  "imagen_frontal": "https://.../1.png",
+  "imagen_trasera": "https://.../back/1.png"
+}
+```
+
+El ID de la hoja es la clave única. Si una fila vuelve a enviarse tras editarse, el endpoint actualiza el registro existente en vez de crear un duplicado. La ruta no importa automáticamente las filas que ya estaban en la hoja; n8n enviará cada fila cuando ocurra una alta o edición que detecte el disparador.
 
 Ejemplo para registrar un producto:
 
@@ -80,7 +98,7 @@ Crea una conexión PostgreSQL con estos valores mientras usas Docker local:
 | Usuario | `api_user` |
 | Contraseña | `api_password` (o la definida en `POSTGRES_PASSWORD`) |
 
-Al conectarte, abre `Schemas > public > Tables` y revisa `maestros` y `productos`. En Render puedes usar la conexión externa de la base, si está habilitada, junto con SSL. No uses la URL interna de Render desde tu computadora; esa URL solo se resuelve en la red privada de Render.
+Al conectarte, abre `Schemas > public > Tables` y revisa `maestros`, `productos` y `pokemon`. En Render puedes usar la conexión externa de la base, si está habilitada, junto con SSL. No uses la URL interna de Render desde tu computadora; esa URL solo se resuelve en la red privada de Render.
 
 ## Automatización con n8n
 
@@ -104,3 +122,4 @@ Después de enviar el repositorio a GitHub:
 ## Secretos y persistencia
 
 No subas `.env` ni contraseñas a GitHub. En una instalación local, cambia `POSTGRES_PASSWORD` antes del primer inicio. Los datos locales se conservan en `postgres_data`; Render administra su propia base PostgreSQL y su persistencia fuera del contenedor de la API.
+
