@@ -12,7 +12,7 @@ const pool = new Pool({
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-app.get('/', (_req, res) => res.json({ nombre: 'API Productos', estado: 'ok', rutas: ['/health', '/api/maestros', '/api/maestros/1', '/api/productos'] }));
+app.get('/', (_req, res) => res.json({ nombre: 'API Productos', estado: 'ok', rutas: ['/health', '/api/maestros', '/api/maestros/1', '/api/productos', '/api/pokemon'] }));
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -75,6 +75,53 @@ app.post('/api/productos', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.get('/api/pokemon', async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, nombre, tipo, imagen_frontal, imagen_trasera, creado_en, actualizado_en FROM pokemon ORDER BY id'
+    );
+    res.json(rows);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/pokemon/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, nombre, tipo, imagen_frontal, imagen_trasera, creado_en, actualizado_en FROM pokemon WHERE id = $1',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Pokémon no encontrado' });
+    res.json(rows[0]);
+  } catch (error) { next(error); }
+});
+
+// Upsert by the stable ID in the Google Sheet so edits update the same Pokémon.
+app.post('/api/pokemon', async (req, res, next) => {
+  const { id, nombre, tipo, imagen_frontal = '', imagen_trasera = '' } = req.body;
+  const pokemonId = Number(id);
+  if (!Number.isInteger(pokemonId) || pokemonId < 1 || typeof nombre !== 'string' || !nombre.trim() || typeof tipo !== 'string' || !tipo.trim()) {
+    return res.status(400).json({ error: 'Se requieren id entero positivo, nombre y tipo' });
+  }
+  if (typeof imagen_frontal !== 'string' || typeof imagen_trasera !== 'string') {
+    return res.status(400).json({ error: 'Las imágenes deben ser texto con la URL o quedar vacías' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO pokemon (id, nombre, tipo, imagen_frontal, imagen_trasera)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET
+         nombre = EXCLUDED.nombre,
+         tipo = EXCLUDED.tipo,
+         imagen_frontal = EXCLUDED.imagen_frontal,
+         imagen_trasera = EXCLUDED.imagen_trasera,
+         actualizado_en = NOW()
+       RETURNING id, nombre, tipo, imagen_frontal, imagen_trasera, creado_en, actualizado_en`,
+      [pokemonId, nombre.trim(), tipo.trim(), imagen_frontal.trim(), imagen_trasera.trim()]
+    );
+    res.json(rows[0]);
+  } catch (error) { next(error); }
+});
+
 app.use((error, _req, res, _next) => {
   console.error(error.message);
   if (error.code === '23503') return res.status(400).json({ error: 'El maestro_id no existe' });
@@ -100,3 +147,4 @@ async function shutdown() {
 start();
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
