@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS productos (
   creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS pokemon (
+  id INTEGER PRIMARY KEY CHECK (id > 0),
+  nombre VARCHAR(120) NOT NULL,
+  tipo VARCHAR(80) NOT NULL,
+  imagen_frontal TEXT NOT NULL DEFAULT '',
+  imagen_trasera TEXT NOT NULL DEFAULT '',
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 INSERT INTO maestros (id, nombre, correo) VALUES
   (1, 'Alex', 'alex@example.com'),
   (2, 'María', 'maria@example.com'),
@@ -49,3 +59,4 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('maestros', 'id'), GREATEST((SELECT MAX(id) FROM maestros), 1));
 SELECT setval(pg_get_serial_sequence('productos', 'id'), GREATEST((SELECT MAX(id) FROM productos), 1));
+
