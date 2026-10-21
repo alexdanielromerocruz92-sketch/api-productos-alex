@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
+const { timingSafeEqual } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -97,6 +98,15 @@ app.get('/api/pokemon/:id', async (req, res, next) => {
 
 // Upsert by the stable ID in the Google Sheet so edits update the same Pokémon.
 app.post('/api/pokemon', async (req, res, next) => {
+  const expectedKey = process.env.POKEMON_WRITE_KEY || '';
+  const suppliedKey = req.get('x-api-key') || '';
+  if (!expectedKey) return res.status(503).json({ error: 'La sincronización de Pokémon aún no está configurada' });
+  const expectedBuffer = Buffer.from(expectedKey);
+  const suppliedBuffer = Buffer.from(suppliedKey);
+  if (expectedBuffer.length !== suppliedBuffer.length || !timingSafeEqual(expectedBuffer, suppliedBuffer)) {
+    return res.status(401).json({ error: 'Clave de sincronización inválida' });
+  }
+
   const { id, nombre, tipo, imagen_frontal = '', imagen_trasera = '' } = req.body;
   const pokemonId = Number(id);
   if (!Number.isInteger(pokemonId) || pokemonId < 1 || typeof nombre !== 'string' || !nombre.trim() || typeof tipo !== 'string' || !tipo.trim()) {
