@@ -1,0 +1,30 @@
+{
+  "name": "Consultar API de productos cada hora",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] } },
+      "id": "2b35f48f-885b-4b52-91ee-3fca4e701c8c",
+      "name": "Cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/maestros/1",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
+      },
+      "id": "f15f859b-d89b-4c68-8139-3230a6f91622",
+      "name": "Obtener productos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    }
+  ],
+  "connections": { "Cada hora": { "main": [[{ "node": "Obtener productos", "type": "main", "index": 0 }]] } },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "2f5d4618-3ff6-4a18-ae12-dbb219e0b7f8",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}
